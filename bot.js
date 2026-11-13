@@ -45,12 +45,9 @@ async function perluSearch(q) {
 
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
-  const prefix = /^ai[\s,:]+/i;
-  const disebut = msg.mentions.has(client.user);
-  if (!disebut && !prefix.test(msg.content)) return;
-
-  const q = msg.content.replace(/<@!?\d+>/g, "").trim().replace(prefix, "").trim();
-  if (!q) return void msg.reply("Iya? Mau nanya apa?");
+  if (process.env.CHANNEL_ID && msg.channel.id !== process.env.CHANNEL_ID) return;
+  const q = msg.content.replace(/<@!?\d+>/g, "").trim();
+  if (!q) return;
 
   await msg.channel.sendTyping();
   const hist = history.get(msg.channel.id) ?? [];

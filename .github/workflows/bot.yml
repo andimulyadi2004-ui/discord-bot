@@ -32,3 +32,4 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}
           PUTER_AUTH_TOKEN: ${{ secrets.PUTER_AUTH_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
