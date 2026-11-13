@@ -17,10 +17,10 @@ jobs:
     timeout-minutes: 358
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
+          node-version: "22"
+      - run: npm install
       - name: Antri sesi berikutnya
         run: |
           S=${{ inputs.sisa }}
@@ -28,7 +28,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-      - run: timeout 350m python bot.py || true
+      - run: timeout 350m node bot.js || true
         env:
           TOKEN: ${{ secrets.TOKEN }}
-          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          PUTER_AUTH_TOKEN: ${{ secrets.PUTER_AUTH_TOKEN }}
