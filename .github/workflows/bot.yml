@@ -37,4 +37,6 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}
           PUTER_AUTH_TOKEN: ${{ secrets.PUTER_AUTH_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          VISION_MODEL: ${{ vars.VISION_MODEL }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}

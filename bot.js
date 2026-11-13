@@ -95,19 +95,66 @@ async function perluSearch(q) {
   }
 }
 
+async function lihatGambar(urls, pertanyaan) {
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.VISION_MODEL || "google/gemini-2.5-flash",
+        max_tokens: 700,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Jelaskan dengan detail dan akurat isi gambar ini (objek, orang, teks yang terbaca, warna, suasana). ${pertanyaan ? "Pengguna bertanya: " + pertanyaan : ""} Jawab dalam bahasa Indonesia.`,
+              },
+              ...urls.map((url) => ({ type: "image_url", image_url: { url } })),
+            ],
+          },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      console.error("Vision error:", res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim() || null;
+  } catch (e) {
+    console.error("Vision gagal:", e);
+    return null;
+  }
+}
+
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
   if (process.env.CHANNEL_ID && msg.channel.id !== process.env.CHANNEL_ID) return;
   const q = msg.content.replace(/<@!?\d+>/g, "").trim();
-  if (!q) return;
+  const gambar = [...msg.attachments.values()]
+    .filter((a) => a.contentType?.startsWith("image/"))
+    .slice(0, 3);
+  if (!q && gambar.length === 0) return;
 
   await msg.channel.sendTyping();
+  let info = "";
+  if (gambar.length) {
+    const hasil = await lihatGambar(gambar.map((a) => a.url), q);
+    info = hasil
+      ? `[Pengguna mengirim ${gambar.length} gambar. Hasil pengamatan AI penglihat: ${hasil}]`
+      : "[Pengguna mengirim gambar, tapi AI penglihat gagal membacanya. Bilang kamu belum bisa lihat gambarnya sekarang.]";
+  }
   memori.riwayat.push({
     role: "user",
-    content: `${msg.member?.displayName ?? msg.author.username}: ${q}`,
+    content: `${msg.member?.displayName ?? msg.author.username}: ${q} ${info}`.trim(),
   });
 
-  const cari = await perluSearch(q);
+  const cari = await perluSearch(q || "(mengirim gambar)");
   if (cari) await msg.channel.send("lagi search dulu");
 
   const sistem = memori.catatan
