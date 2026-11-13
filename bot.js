@@ -96,40 +96,48 @@ async function perluSearch(q) {
 }
 
 async function lihatGambar(urls, pertanyaan) {
-  try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.VISION_MODEL || "google/gemini-2.5-flash",
-        max_tokens: 700,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Jelaskan dengan detail dan akurat isi gambar ini (objek, orang, teks yang terbaca, warna, suasana). ${pertanyaan ? "Pengguna bertanya: " + pertanyaan : ""} Jawab dalam bahasa Indonesia.`,
-              },
-              ...urls.map((url) => ({ type: "image_url", image_url: { url } })),
-            ],
-          },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      console.error("Vision error:", res.status, await res.text());
-      return null;
+  const daftar = (process.env.VISION_MODEL || "google/gemini-2.5-flash")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  for (const model of daftar) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 900,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Jelaskan dengan detail dan akurat isi gambar ini (objek, orang, teks yang terbaca, warna, suasana). ${pertanyaan ? "Pengguna bertanya: " + pertanyaan : ""} Jawab dalam bahasa Indonesia.`,
+                },
+                ...urls.map((url) => ({ type: "image_url", image_url: { url } })),
+              ],
+            },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        console.error("Vision error:", model, res.status, (await res.text()).slice(0, 300));
+        continue;
+      }
+      const data = await res.json();
+      const teks = data.choices?.[0]?.message?.content?.trim();
+      if (teks) return teks;
+      console.error("Vision kosong:", model);
+    } catch (e) {
+      console.error("Vision gagal:", model, e);
     }
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || null;
-  } catch (e) {
-    console.error("Vision gagal:", e);
-    return null;
   }
+  return null;
 }
 
 client.on("messageCreate", async (msg) => {
