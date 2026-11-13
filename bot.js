@@ -110,7 +110,7 @@ async function lihatGambar(urls, pertanyaan) {
         },
         body: JSON.stringify({
           model,
-          max_tokens: 900,
+          max_tokens: 2000,
           messages: [
             {
               role: "user",
