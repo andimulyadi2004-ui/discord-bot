@@ -28,7 +28,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-      - run: timeout 350m node bot.js || true
+      - run: |
+          END=$((SECONDS+21000))
+          while [ $SECONDS -lt $END ]; do
+            timeout $((END-SECONDS)) node bot.js || true
+            sleep 5
+          done
         env:
           TOKEN: ${{ secrets.TOKEN }}
           PUTER_AUTH_TOKEN: ${{ secrets.PUTER_AUTH_TOKEN }}
