@@ -157,17 +157,47 @@ async function infoRole(msg) {
     const baris = (m) => `- ${nama(m)}${m.id === guild.ownerId ? " [PEMILIK ASLI]" : ""}: ${roles(m)}`;
 
     const daftar = new Map();
+    const catatan = [];
     if (msg.member) daftar.set(msg.author.id, msg.member);
     for (const m of msg.mentions.members?.values() ?? []) daftar.set(m.id, m);
+
+    const handles = [
+      ...new Set(
+        [...msg.content.matchAll(/(?<![<\w])@([A-Za-z0-9_.]{2,32})/g)].map((x) => x[1].toLowerCase())
+      ),
+    ].slice(0, 5);
+    for (const h of handles) {
+      let ketemu = [];
+      try {
+        const hasil = await guild.members.search({ query: h, limit: 5 });
+        ketemu = [...hasil.values()];
+      } catch (e) {
+        console.error("Cari anggota gagal:", h, e);
+      }
+      if (!ketemu.length) {
+        ketemu = [...guild.members.cache.values()].filter((m) => m.user.username.toLowerCase() === h);
+      }
+      const tepat = ketemu.filter((m) => m.user.username.toLowerCase() === h);
+      if (tepat.length) ketemu = tepat;
+      if (ketemu.length) ketemu.forEach((m) => daftar.set(m.id, m));
+      else catatan.push(`Pencarian @${h}: tidak ditemukan di server ini.`);
+    }
+
     if (guild.memberCount <= 150) {
       try {
-        await guild.members.fetch();
-      } catch {}
+        await guild.members.fetch({ time: 15000 });
+      } catch (e) {
+        console.error("Muat semua anggota gagal:", e);
+        catatan.push("Daftar lengkap anggota gagal dimuat, hanya sebagian yang diketahui.");
+      }
       for (const m of guild.members.cache.values()) daftar.set(m.id, m);
+    } else {
+      catatan.push("Server besar: hanya pengirim, orang yang di-tag, dan yang disebut lewat @username yang dicek.");
     }
+
     const me = await guild.members.fetchMe();
     const anggota = [...daftar.values()].slice(0, 150).map(baris).join("\n");
-    return `Role dirimu sendiri (bot): ${roles(me)}\nDaftar anggota dan role-nya:\n${anggota}`;
+    return `Role dirimu sendiri (bot): ${roles(me)}\n${catatan.join("\n")}\nDaftar anggota dan role-nya:\n${anggota}`;
   } catch (e) {
     console.error("Gagal ambil role:", e);
     return "";
