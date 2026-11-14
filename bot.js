@@ -1,7 +1,8 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import { init } from "@heyputer/puter.js/src/init.cjs";
 
-const MODEL = "gpt-5.6-luna";
+const MODELS = { luna1: "openai/gpt-6-luna", luna2: "gpt-5.6-luna" };
+const modelAktif = () => MODELS[memori.model] ?? MODELS.luna1;
 const FILE = "bot-memori/memori.json";
 const puter = init(process.env.PUTER_AUTH_TOKEN);
 const client = new Client({
@@ -18,7 +19,7 @@ Kamu cuma bisa kirim teks di Discord. Kamu TIDAK bisa melakukan apa pun di dunia
 Selain itu kamu bisa ngobrol, jawab pertanyaan, bantu nulis, dan lainnya seperti AI biasa. Jawab ringkas.
 Kamu BISA melihat role (peran) anggota server dan role dirimu sendiri: kalau pesan user butuh itu, sistem menyediakan DATA ROLE di bawah. Kalau user minta cek role tapi DATA ROLE tidak ada, bilang data role-nya gagal dimuat dan suruh coba lagi; jangan bilang kamu tidak punya fitur itu. Kamu punya ingatan permanen. Pakai ingatanmu dengan natural, jangan disebut-sebut kecuali ditanya.`;
 
-let memori = { catatan: "", riwayat: [] };
+let memori = { catatan: "", riwayat: [], model: "luna1" };
 let hitung = 0;
 const bersih = (t) => String(t ?? "").replace(/[⟦⟧]/g, "");
 
@@ -33,7 +34,7 @@ async function muatMemori() {
   try {
     const blob = await puter.fs.read(FILE);
     const d = JSON.parse(await blob.text());
-    memori = { catatan: d.catatan ?? "", riwayat: d.riwayat ?? [] };
+    memori = { catatan: d.catatan ?? "", riwayat: d.riwayat ?? [], model: d.model ?? "luna1" };
     console.log("Memori dimuat:", memori.riwayat.length, "pesan");
   } catch {
     console.log("Belum ada memori, mulai baru");
@@ -69,7 +70,7 @@ async function rapikanCatatan() {
           content: `CATATAN LAMA:\n${memori.catatan || "(kosong)"}\n\nPERCAKAPAN TERBARU:\n${terbaru}`,
         },
       ],
-      { model: MODEL }
+      { model: modelAktif() }
     );
     const baru = toText(res).trim();
     if (baru) memori.catatan = baru.slice(0, 2000);
@@ -89,7 +90,7 @@ async function perluSearch(q) {
         },
         { role: "user", content: q },
       ],
-      { model: MODEL }
+      { model: modelAktif() }
     );
     const j = toText(res);
     console.log("Keputusan mentah:", JSON.stringify(j.slice(0, 40)));
@@ -217,7 +218,7 @@ async function perluRole(q) {
         },
         { role: "user", content: q },
       ],
-      { model: MODEL }
+      { model: modelAktif() }
     );
     const j = toText(res);
     console.log("Keputusan mentah:", JSON.stringify(j.slice(0, 40)));
@@ -235,6 +236,20 @@ client.on("messageCreate", async (msg) => {
     .filter((a) => a.contentType?.startsWith("image/"))
     .slice(0, 3);
   if (!q && gambar.length === 0) return;
+
+  const perintah = q.match(/^(?:ganti\s+)?(?:ke\s+|jadi\s+|pake\s+|pakai\s+)?luna\s*([12])[\s.!]*$/i);
+  if (perintah) {
+    if (msg.author.id !== msg.guild.ownerId) {
+      return void msg.reply("Cuma owner server yang bisa ganti model.");
+    }
+    memori.model = perintah[1] === "2" ? "luna2" : "luna1";
+    await simpanMemori();
+    return void msg.reply(
+      memori.model === "luna2"
+        ? "Oke, sekarang pakai **Luna 2** (token $0.20)."
+        : "Oke, sekarang pakai **Luna 1** (token $0.10)."
+    );
+  }
 
   await msg.channel.sendTyping();
   let info = "";
@@ -277,12 +292,12 @@ client.on("messageCreate", async (msg) => {
 
   let jawab;
   try {
-    const opsi = cari ? { model: MODEL, tools: [{ type: "web_search" }] } : { model: MODEL };
+    const opsi = cari ? { model: modelAktif(), tools: [{ type: "web_search" }] } : { model: modelAktif() };
     jawab = toText(await puter.ai.chat(messages, opsi));
   } catch (e) {
     console.error("Error AI:", e);
     try {
-      jawab = toText(await puter.ai.chat(messages, { model: MODEL }));
+      jawab = toText(await puter.ai.chat(messages, { model: modelAktif() }));
     } catch (e2) {
       console.error("Error AI 2:", e2);
       jawab = "Maaf, lagi error. Coba lagi bentar ya.";
