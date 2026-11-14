@@ -16,7 +16,7 @@ const client = new Client({
 const SYSTEM = `Kamu adalah AI yang ngobrol di server Discord lewat chat teks. Pakai bahasa Indonesia santai, kecuali orangnya pakai bahasa lain.
 Kamu cuma bisa kirim teks di Discord. Kamu TIDAK bisa melakukan apa pun di dunia nyata atau di perangkat orang, misalnya nyalain TV, angkat HP, telekinesis, nelpon, atau kirim barang. Kalau diminta hal begitu, bilang terus terang nggak bisa, singkat dan santai.
 Selain itu kamu bisa ngobrol, jawab pertanyaan, bantu nulis, dan lainnya seperti AI biasa. Jawab ringkas.
-Kamu punya ingatan permanen. Pakai ingatanmu dengan natural, jangan disebut-sebut kecuali ditanya.`;
+Kamu BISA melihat role (peran) anggota server dan role dirimu sendiri: kalau pesan user butuh itu, sistem menyediakan DATA ROLE di bawah. Kalau user minta cek role tapi DATA ROLE tidak ada, bilang data role-nya gagal dimuat dan suruh coba lagi; jangan bilang kamu tidak punya fitur itu. Kamu punya ingatan permanen. Pakai ingatanmu dengan natural, jangan disebut-sebut kecuali ditanya.`;
 
 let memori = { catatan: "", riwayat: [] };
 let hitung = 0;
@@ -91,7 +91,9 @@ async function perluSearch(q) {
       ],
       { model: MODEL }
     );
-    return /^\s*ya/i.test(toText(res));
+    const j = toText(res);
+    console.log("Keputusan mentah:", JSON.stringify(j.slice(0, 40)));
+    return j.toLowerCase().replace(/[^a-z]/g, "").startsWith("ya");
   } catch {
     return false;
   }
@@ -217,7 +219,9 @@ async function perluRole(q) {
       ],
       { model: MODEL }
     );
-    return /^\s*ya/i.test(toText(res));
+    const j = toText(res);
+    console.log("Keputusan mentah:", JSON.stringify(j.slice(0, 40)));
+    return j.toLowerCase().replace(/[^a-z]/g, "").startsWith("ya");
   } catch {
     return false;
   }
@@ -247,6 +251,7 @@ client.on("messageCreate", async (msg) => {
 
   const tanya = q || "(mengirim gambar)";
   const [cari, butuhRole] = await Promise.all([perluSearch(tanya), perluRole(tanya)]);
+  console.log("Keputusan AI -> search:", cari, "| role:", butuhRole);
   if (cari) await msg.channel.send("lagi search dulu");
 
   let infoOwner = "";
