@@ -237,6 +237,11 @@ client.on("messageCreate", async (msg) => {
     .slice(0, 3);
   if (!q && gambar.length === 0) return;
 
+  if (/^(?:cek\s+)?model(?:\s+(?:saat\s+ini|sekarang|apa|ai))?[\s?.!]*$/i.test(q)) {
+    const nama = memori.model === "luna2" ? "Luna 2 (token $0.20)" : "Luna 1 (token $0.10)";
+    return void msg.reply("Model saat ini: **" + nama + "** (" + modelAktif() + ")");
+  }
+
   const perintah = q.match(/^(?:ganti\s+)?(?:ke\s+|jadi\s+|pake\s+|pakai\s+)?luna\s*([12])[\s.!]*$/i);
   if (perintah) {
     if (msg.author.id !== msg.guild.ownerId) {
