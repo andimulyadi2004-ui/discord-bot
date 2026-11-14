@@ -159,15 +159,24 @@ client.on("messageCreate", async (msg) => {
   }
   memori.riwayat.push({
     role: "user",
-    content: `${msg.member?.displayName ?? msg.author.username}: ${q} ${info}`.trim(),
+    content: `${msg.member?.displayName ?? msg.author.username}${msg.author.id === msg.guild?.ownerId ? " (pemilik server)" : ""}: ${q} ${info}`.trim(),
   });
 
   const cari = await perluSearch(q || "(mengirim gambar)");
   if (cari) await msg.channel.send("lagi search dulu");
 
-  const sistem = memori.catatan
-    ? `${SYSTEM}\n\nIngatan jangka panjangmu:\n${memori.catatan}`
-    : SYSTEM;
+  let infoOwner = "";
+  try {
+    const owner = await msg.guild.fetchOwner();
+    infoOwner = `\n\nServer Discord ini bernama "${msg.guild.name}". Pemilik (owner) server: ${owner.displayName} (username: ${owner.user.username}). Kalau ada yang tanya siapa owner server, jawab itu. Pesan dari pemilik server diberi label "(pemilik server)".`;
+  } catch (e) {
+    console.error("Gagal ambil owner:", e);
+  }
+  const sistem =
+    SYSTEM +
+    infoOwner +
+    (memori.catatan ? `\n\nIngatan jangka panjangmu:\n${memori.catatan}` : "");
+
   const messages = [{ role: "system", content: sistem }, ...memori.riwayat.slice(-12)];
 
   let jawab;
