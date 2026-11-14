@@ -174,6 +174,25 @@ async function infoRole(msg) {
   }
 }
 
+async function perluRole(q) {
+  try {
+    const res = await puter.ai.chat(
+      [
+        {
+          role: "system",
+          content:
+            "Jawab HANYA satu kata: ya atau no. Pertanyaannya: apakah kamu perlu melihat daftar role (peran/jabatan/pangkat) anggota server Discord, baik role orang lain maupun role dirimu sendiri, untuk menjawab pesan user ini? Jawab ya HANYA kalau user jelas menanyakan atau menyuruh kamu melihat atau mengecek role seseorang atau dirimu sendiri. Selain itu jawab no.",
+        },
+        { role: "user", content: q },
+      ],
+      { model: MODEL }
+    );
+    return /^\s*ya/i.test(toText(res));
+  } catch {
+    return false;
+  }
+}
+
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
   if (process.env.CHANNEL_ID && msg.channel.id !== process.env.CHANNEL_ID) return;
@@ -196,7 +215,8 @@ client.on("messageCreate", async (msg) => {
     content: `${msg.author.id === msg.guild?.ownerId ? "⟦PEMILIK-ASLI⟧ " : ""}${bersih(msg.member?.displayName ?? msg.author.username)}: ${bersih(q)} ${bersih(info)}`.trim(),
   });
 
-  const cari = await perluSearch(q || "(mengirim gambar)");
+  const tanya = q || "(mengirim gambar)";
+  const [cari, butuhRole] = await Promise.all([perluSearch(tanya), perluRole(tanya)]);
   if (cari) await msg.channel.send("lagi search dulu");
 
   let infoOwner = "";
@@ -207,7 +227,7 @@ client.on("messageCreate", async (msg) => {
     console.error("Gagal ambil owner:", e);
   }
   let dataRole = "";
-  if (/\b(role|roles|peran|jabatan|pangkat)\b/i.test(q)) {
+  if (butuhRole) {
     dataRole = await infoRole(msg);
   }
   const sistem =
